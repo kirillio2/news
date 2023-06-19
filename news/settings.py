@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+import django.core.mail.backends.smtp
+
+#django-debug-toolbar
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
 """
 Django settings for news project.
 
@@ -9,8 +17,20 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+from django.contrib.messages import constants as message
+
+# python-dotenv
+# https://pypi.org/project/python-dotenv/
+from dotenv import load_dotenv
+# Loading ENV
+env_path = Path('.') / '.env'
+
+load_dotenv(dotenv_path=env_path)
+# end python-dotenv
+
+import posts.apps
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,26 +39,51 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-yoy+j5zwu93rkt&(-vfu5#!jfstjr=frm7_(frt5t32gykbb7e'
+# SECURITY WARNING: keep the se cret key used in production secret!
+# SECRET_KEY = 'django-insecure-yoy+j5zwu93rkt&(-vfu5#!jfstjr=frm7_(frt5t32gykbb7e'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Разрешеные хосты
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
+    #'daphne',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sites',
     'django.contrib.staticfiles',
-    'posts',
+    #https://docs.djangoproject.com/en/4.2/ref/contrib/humanize/
+    'django.contrib.humanize',
+    'django_extensions',
+
+    #Установленые
+    'allauth',
+    'allauth.account',
+    'debug_toolbar',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+
+    'crispy_forms',
+    'ckeditor',
+
+    #Мои приложения
+    'posts.apps.PostsConfig',
+
+    #Должна быть последней, https://github.com/un1t/django-cleanup
+    'django_cleanup.apps.CleanupConfig',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -48,6 +93,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware', #django-debug-toolbar
 ]
 
 ROOT_URLCONF = 'news.urls'
@@ -56,7 +102,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            BASE_DIR / "templates",
+            os.path.join(BASE_DIR, 'posts', 'templates'),
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -70,6 +116,34 @@ TEMPLATES = [
     },
 ]
 
+#django-allauth
+#https://django-allauth.readthedocs.io/en/latest/installation.html
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    },
+    'github': {
+        'SCOPE': [
+            'user',
+            'repo',
+            'read:org',
+        ],
+    }
+}
+
+#END django-allauth
 WSGI_APPLICATION = 'news.wsgi.application'
 
 
@@ -106,7 +180,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
 
@@ -119,8 +193,69 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+#https://docs.djangoproject.com/en/4.2/ref/settings/#static-root
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+# https://docs.djangoproject.com/en/4.2/ref/settings/#media-root
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+MEDIA_URL = '/media/'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#django-crispy-forms
+# https://django-crispy-forms.readthedocs.io/en/latest/install.html
+CRISPY_TEMPLATE_PACK = 'uni_form'
+
+#End django-crispy-forms
+
+
+#django-ckeditor
+#https://pypi.org/project/django-ckeditor/
+CKEDITOR_CONFIGS = {
+    'default': {
+        'width': 'auto',
+    },
+}
+#End django-ckeditor
+
+
+#django-channels
+"""
+ASGI_APPLICATION = "news.routing.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    },
+}
+"""
+#END django-channels
+
+#email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS')
+
+#END email
+
+GOOGLE_RECAPTCHA_SECRET_KEY = os.getenv("GOOGLE_RECAPTCHA_SECRET_KEY")
+
+
+# MESSAGE_TAGS = {
+#     messages.DEBUG: 'alert-secondary',
+#     messages.INFO: 'alert-info',
+#     messages.SUCCESS: 'alert-success',
+#     messages.WARNING: 'alert-warning',
+#     messages.ERROR: 'alert-danger',
+# }
+
+
+#В производсве убрать
+os.environ['DJANGO_ALLOW_ASYNC_UNSAFE'] = "true"
